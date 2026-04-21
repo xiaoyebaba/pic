@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>全屏轮播</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none; /* 避免拖动按钮文字，不影响使用 */
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;   /* 禁止滚动，确保全屏无滚动条 */
+            background: #000;
+        }
+
+        /* 轮播容器占满全屏 */
+        .fullscreen-carousel {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* 图片容器，滑动区域 */
+        .carousel-track {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 每一张幻灯片 */
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out;
+            z-index: 1;
+        }
+
+        .slide.active {
+            opacity: 1;
+            z-index: 2;
+        }
+
+        .slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;   /* 图片覆盖全屏，保持比例裁剪 */
+            display: block;
+        }
+
+        /* 导航按钮 (左右箭头) - 简洁半透明圆形 */
+        .nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 52px;
+            height: 52px;
+            background: rgba(20, 20, 30, 0.55);
+            backdrop-filter: blur(6px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 20;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .nav-btn:hover {
+            background: rgba(0, 0, 0, 0.75);
+            transform: translateY(-50%) scale(1.05);
+            border-color: rgba(255,255,255,0.5);
+        }
+
+        .nav-btn svg {
+            width: 26px;
+            height: 26px;
+            fill: white;
+            stroke: none;
+        }
+
+        .btn-prev {
+            left: 24px;
+        }
+
+        .btn-next {
+            right: 24px;
+        }
+
+        /* 极简指示点 (小圆点) - 低调且不干扰，让用户知道当前进度，但非标题文字，符合“不用其他东西”？如果不想要可删，但通常轮播保留点提升体验，完全无文字 */
+        .dots {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            z-index: 20;
+            padding: 8px 0;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: rgba(220, 220, 240, 0.6);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            padding: 0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .dot.active {
+            background: white;
+            width: 24px;
+            border-radius: 12px;
+            box-shadow: 0 0 4px rgba(255,255,240,0.6);
+        }
+
+        /* 手机优化：按钮略小，点区域加大 */
+        @media (max-width: 640px) {
+            .nav-btn {
+                width: 42px;
+                height: 42px;
+            }
+            .nav-btn svg {
+                width: 20px;
+                height: 20px;
+            }
+            .btn-prev {
+                left: 12px;
+            }
+            .btn-next {
+                right: 12px;
+            }
+            .dots {
+                bottom: 16px;
+                gap: 8px;
+            }
+            .dot.active {
+                width: 20px;
+            }
+        }
+
+        /* 可选：完全隐藏任何文字或标题，确保无额外文本 */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+            border: 0;
+        }
+    </style>
+</head>
+<body>
+<div class="fullscreen-carousel">
+    <div class="carousel-track" id="carouselTrack">
+        <!-- 幻灯片会通过js动态生成，便于修改图片列表 -->
+    </div>
+    <!-- 左右箭头按钮 -->
+    <div class="nav-btn btn-prev" id="prevBtn" aria-label="上一张">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+    </div>
+    <div class="nav-btn btn-next" id="nextBtn" aria-label="下一张">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+    </div>
+    <!-- 极简指示点 (无文字) -->
+    <div class="dots" id="dotsContainer"></div>
+</div>
+
+<script>
+    // ---------- 图片配置区域 ----------
+    // 在这里替换成你自己的图片链接 (可任意数量，至少1张)
+    const images = [
+        {
+            url: "https://i.hd-r.cn/7729ec4c-7938-46c6-a256-fe68867c19d3.jpg",
+        },
+        {
+            url: "https://i.hd-r.cn/9829fd5f-8645-4290-9cd0-80bc7e680349.jpg",
+        },
+        {
+            url: "https://i.hd-r.cn/24412c0e-8ce4-4ac0-98b2-a15ba4e7d677.jpg",
+        },
+        {
+            url: "https://i.hd-r.cn/ad1ad7f7-38dc-476c-9656-1df88ba094ab.jpg",
+        },
+        {
+            url: "https://i.hd-r.cn/09a321c4-7f1d-44aa-acc7-c6412f0377e9.jpg",
+        }
+    ];
+
+    // 轮播切换间隔 (毫秒)  10秒 = 10000ms
+    const INTERVAL_TIME = 10000;
+
+    let currentIndex = 0;
+    let autoTimer = null;
+    let slides = [];          // 存储slide DOM元素
+    let isPlaying = true;
+
+    // 获取容器
+    const track = document.getElementById('carouselTrack');
+    const dotsContainer = document.getElementById('dotsContainer');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+
+    // 渲染轮播结构
+    function buildCarousel() {
+        track.innerHTML = '';
+        dotsContainer.innerHTML = '';
+        
+        images.forEach((imgData, idx) => {
+            // 创建 slide 元素
+            const slideDiv = document.createElement('div');
+            slideDiv.className = 'slide';
+            if (idx === currentIndex) slideDiv.classList.add('active');
+            
+            const img = document.createElement('img');
+            img.src = imgData.url;
+            img.alt = `slide ${idx+1}`;
+            // 图片加载失败时使用备用的图片（避免空白）
+            img.onerror = function() {
+                this.src = "https://picsum.photos/id/20/1920/1080";
+            };
+            slideDiv.appendChild(img);
+            track.appendChild(slideDiv);
+            slides.push(slideDiv);
+            
+            // 创建指示点
+            const dot = document.createElement('button');
+            dot.classList.add('dot');
+            if (idx === currentIndex) dot.classList.add('active');
+            dot.setAttribute('data-index', idx);
+            dot.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const idxClicked = parseInt(dot.getAttribute('data-index'), 10);
+                if (!isNaN(idxClicked) && idxClicked !== currentIndex) {
+                    goToSlide(idxClicked);
+                    resetAutoTimer();  // 手动切换后重置计时器
+                }
+            });
+            dotsContainer.appendChild(dot);
+        });
+    }
+
+    // 切换到指定索引的幻灯片
+    function goToSlide(index) {
+        if (index === currentIndex) return;
+        if (index < 0) index = images.length - 1;
+        if (index >= images.length) index = 0;
+        
+        // 移除当前激活样式
+        slides[currentIndex].classList.remove('active');
+        const dots = document.querySelectorAll('.dot');
+        dots[currentIndex].classList.remove('active');
+        
+        currentIndex = index;
+        
+        slides[currentIndex].classList.add('active');
+        dots[currentIndex].classList.add('active');
+    }
+    
+    // 下一张
+    function nextSlide() {
+        let next = currentIndex + 1;
+        if (next >= images.length) next = 0;
+        goToSlide(next);
+    }
+    
+    // 上一张
+    function prevSlide() {
+        let prev = currentIndex - 1;
+        if (prev < 0) prev = images.length - 1;
+        goToSlide(prev);
+    }
+    
+    // 自动轮播启动
+    function startAutoPlay() {
+        if (autoTimer) clearInterval(autoTimer);
+        autoTimer = setInterval(() => {
+            nextSlide();
+        }, INTERVAL_TIME);
+        isPlaying = true;
+    }
+    
+    // 暂停自动轮播
+    function stopAutoPlay() {
+        if (autoTimer) {
+            clearInterval(autoTimer);
+            autoTimer = null;
+        }
+        isPlaying = false;
+    }
+    
+    // 重置计时器 (保持自动播放状态)
+    function resetAutoTimer() {
+        if (isPlaying) {
+            // 重新开始计时
+            if (autoTimer) clearInterval(autoTimer);
+            autoTimer = setInterval(() => {
+                nextSlide();
+            }, INTERVAL_TIME);
+        }
+    }
+    
+    // 鼠标悬停时暂停自动轮播 (提升用户体验，但不会干扰手动)
+    let hoverPaused = false;
+    function pauseOnHover() {
+        if (isPlaying && !hoverPaused) {
+            stopAutoPlay();
+            hoverPaused = true;
+        }
+    }
+    
+    function resumeOnLeave() {
+        if (hoverPaused) {
+            startAutoPlay();
+            hoverPaused = false;
+        }
+    }
+    
+    // 绑定事件 (按钮 + 全屏容器悬停控制)
+    function bindEvents() {
+        prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            prevSlide();
+            resetAutoTimer();
+        });
+        nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            nextSlide();
+            resetAutoTimer();
+        });
+        
+        // 全屏容器悬停时暂停自动播放，离开恢复
+        const container = document.querySelector('.fullscreen-carousel');
+        if (container) {
+            container.addEventListener('mouseenter', pauseOnHover);
+            container.addEventListener('mouseleave', resumeOnLeave);
+            // 移动端触摸：触摸时暂停，触摸结束恢复（避免干扰手动滑动）
+            container.addEventListener('touchstart', (e) => {
+                // 如果触摸的是按钮区域，不额外处理按钮事件本身会自己响应，但自动播放暂停是友好的
+                pauseOnHover();
+            });
+            container.addEventListener('touchend', (e) => {
+                // 延迟一点点恢复，避免点击按钮后瞬间恢复又立即自动切换
+                setTimeout(() => {
+                    if (hoverPaused) {
+                        resumeOnLeave();
+                    }
+                }, 300);
+            });
+        }
+    }
+    
+    // 监听窗口resize 保证全屏无异常 (无需额外操作，CSS已覆盖)
+    window.addEventListener('resize', () => {});
+    
+    // 初始化轮播
+    function init() {
+        buildCarousel();
+        bindEvents();
+        startAutoPlay();  // 自动播放开启 (10秒)
+    }
+    
+    init();
+
+    // 提供给控制台简易API (方便用户替换图片，而无需懂代码)
+    window.carouselControl = {
+        // 更新整个图片列表: 传入数组 ['https://xxx.jpg', ...] 或 [{url: 'xx'}]
+        updateImages: function(newImageUrls) {
+            if (!newImageUrls || newImageUrls.length === 0) return;
+            // 清空原数组
+            images.length = 0;
+            for (let i = 0; i < newImageUrls.length; i++) {
+                let url = typeof newImageUrls[i] === 'string' ? newImageUrls[i] : newImageUrls[i].url;
+                if (url) images.push({ url: url });
+            }
+            // 重置状态
+            currentIndex = 0;
+            // 重新构建dom
+            slides = [];
+            buildCarousel();
+            // 重置计时器 (保持自动播放)
+            if (isPlaying) {
+                if (autoTimer) clearInterval(autoTimer);
+                startAutoPlay();
+            } else {
+                // 如果当前暂停状态，保持暂停但重建后需要重新绑定？
+                if (autoTimer) clearInterval(autoTimer);
+                autoTimer = null;
+            }
+            console.log('✅ 轮播图片已更新，共 ' + images.length + ' 张');
+        },
+        // 添加一张图片
+        addImage: function(imageUrl) {
+            images.push({ url: imageUrl });
+            // 重建轮播 (保留当前索引最好重置到第一张，避免越界)
+            const oldIndex = currentIndex;
+            slides = [];
+            buildCarousel();
+            if (oldIndex < images.length) {
+                goToSlide(oldIndex);
+            } else {
+                goToSlide(0);
+            }
+            if (isPlaying) resetAutoTimer();
+            console.log('✅ 已添加新图片');
+        },
+        // 暂停/恢复自动播放
+        toggleAutoPlay: function() {
+            if (isPlaying) {
+                stopAutoPlay();
+                console.log('⏸️ 自动播放已暂停');
+            } else {
+                startAutoPlay();
+                console.log('▶️ 自动播放已恢复 (10秒间隔)');
+            }
+        }
+    };
+    
+    // 控制台输出帮助信息
+    console.log('🎬 全屏轮播已启动 | 切换间隔10秒 | 使用 window.carouselControl.updateImages([...]) 更换图片');
+</script>
+</body>
+</html>
