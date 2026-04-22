@@ -9,17 +9,16 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            user-select: none; /* 避免拖动按钮文字，不影响使用 */
+            user-select: none;
         }
 
         html, body {
             width: 100%;
             height: 100%;
-            overflow: hidden;   /* 禁止滚动，确保全屏无滚动条 */
+            overflow: hidden;
             background: #000;
         }
 
-        /* 轮播容器占满全屏 */
         .fullscreen-carousel {
             position: relative;
             width: 100%;
@@ -27,14 +26,12 @@
             overflow: hidden;
         }
 
-        /* 图片容器，滑动区域 */
         .carousel-track {
             position: relative;
             width: 100%;
             height: 100%;
         }
 
-        /* 每一张幻灯片 */
         .slide {
             position: absolute;
             top: 0;
@@ -54,11 +51,11 @@
         .slide img {
             width: 100%;
             height: 100%;
-            object-fit: cover;   /* 图片覆盖全屏，保持比例裁剪 */
+            object-fit: cover;
             display: block;
         }
 
-        /* 导航按钮 (左右箭头) - 简洁半透明圆形 */
+        /* 导航按钮 */
         .nav-btn {
             position: absolute;
             top: 50%;
@@ -99,10 +96,10 @@
             right: 24px;
         }
 
-        /* 极简指示点 (小圆点) - 低调且不干扰，让用户知道当前进度，但非标题文字，符合“不用其他东西”？如果不想要可删，但通常轮播保留点提升体验，完全无文字 */
+        /* 指示点 */
         .dots {
             position: absolute;
-            bottom: 20px;
+            bottom: 24px;
             left: 0;
             right: 0;
             display: flex;
@@ -131,7 +128,7 @@
             box-shadow: 0 0 4px rgba(255,255,240,0.6);
         }
 
-        /* 手机优化：按钮略小，点区域加大 */
+        /* 手机优化 */
         @media (max-width: 640px) {
             .nav-btn {
                 width: 42px;
@@ -155,103 +152,95 @@
                 width: 20px;
             }
         }
-
-        /* 可选：完全隐藏任何文字或标题，确保无额外文本 */
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0,0,0,0);
-            border: 0;
-        }
     </style>
 </head>
 <body>
 <div class="fullscreen-carousel">
-    <div class="carousel-track" id="carouselTrack">
-        <!-- 幻灯片会通过js动态生成，便于修改图片列表 -->
-    </div>
-    <!-- 左右箭头按钮 -->
+    <div class="carousel-track" id="carouselTrack"></div>
     <div class="nav-btn btn-prev" id="prevBtn" aria-label="上一张">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
     </div>
     <div class="nav-btn btn-next" id="nextBtn" aria-label="下一张">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
     </div>
-    <!-- 极简指示点 (无文字) -->
     <div class="dots" id="dotsContainer"></div>
 </div>
 
 <script>
-    // ---------- 图片配置区域 ----------
-    // 在这里替换成你自己的图片链接 (可任意数量，至少1张)
-    const images = [
+    // ========== 图片配置区 ==========
+    // 每一张图片包含 url 和 caption（备注仅用于你自己识别，不会显示在页面上）
+    // 增删图片：直接在这个数组里添加或删除 {} 对象即可
+    const imageList = [
         {
             url: "https://i.hd-r.cn/867cc96c-7fed-49e0-9ea4-e5688cae28ab.jpg",
+            caption: "五一活动"      // 这是备注，方便你知道是什么图
         },
         {
             url: "https://i.hd-r.cn/9829fd5f-8645-4290-9cd0-80bc7e680349.jpg",
+            caption: "有家就有佛山造"
         },
         {
             url: "https://i.hd-r.cn/24412c0e-8ce4-4ac0-98b2-a15ba4e7d677.jpg",
+            caption: "有家就有佛山造"
         },
         {
             url: "https://i.hd-r.cn/ad1ad7f7-38dc-476c-9656-1df88ba094ab.jpg",
+            caption: "奢界188"
         },
         {
             url: "https://i.hd-r.cn/09a321c4-7f1d-44aa-acc7-c6412f0377e9.jpg",
-        },
-        {
-            url: "https://i.hd-r.cn/f9f1c0ed-9d72-44ad-97c6-26fc86644968.jpg",
-        },
-        {
-            url: "https://i.hd-r.cn/715385b9-6332-4bcb-8f0d-5db6f709c0a6.jpg",
+            caption: "静界128"
         },
         {
             url: "https://i.hd-r.cn/1b73a832-9435-4f3b-bdf0-6a9cad5bfe13.jpg",
+            caption: "Mate110"
         },
+        {
+            url: "https://i.hd-r.cn/715385b9-6332-4bcb-8f0d-5db6f709c0a6.jpg",
+            caption: "Mate120"
+        },
+        {
+            url: "https://i.hd-r.cn/f9f1c0ed-9d72-44ad-97c6-26fc86644968.jpg",
+            caption: "Mate125"
+        }
     ];
 
-    // 轮播切换间隔 (毫秒)  10秒 = 10000ms
+    // 轮播切换间隔 10秒
     const INTERVAL_TIME = 10000;
 
+    // ----------------- 以下代码无需修改 -----------------
     let currentIndex = 0;
     let autoTimer = null;
-    let slides = [];          // 存储slide DOM元素
+    let slides = [];
     let isPlaying = true;
 
-    // 获取容器
     const track = document.getElementById('carouselTrack');
     const dotsContainer = document.getElementById('dotsContainer');
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
 
-    // 渲染轮播结构
     function buildCarousel() {
         track.innerHTML = '';
         dotsContainer.innerHTML = '';
-        
-        images.forEach((imgData, idx) => {
-            // 创建 slide 元素
+        slides = [];
+
+        imageList.forEach((item, idx) => {
             const slideDiv = document.createElement('div');
             slideDiv.className = 'slide';
             if (idx === currentIndex) slideDiv.classList.add('active');
-            
+
             const img = document.createElement('img');
-            img.src = imgData.url;
-            img.alt = `slide ${idx+1}`;
-            // 图片加载失败时使用备用的图片（避免空白）
+            img.src = item.url;
+            img.alt = item.caption || `slide ${idx+1}`; // alt 属性保留备注，但不显示在页面上
             img.onerror = function() {
                 this.src = "https://picsum.photos/id/20/1920/1080";
+                console.warn(`图片 ${idx+1} 加载失败，已替换占位图`);
             };
             slideDiv.appendChild(img);
             track.appendChild(slideDiv);
             slides.push(slideDiv);
-            
-            // 创建指示点
+
+            // 指示点
             const dot = document.createElement('button');
             dot.classList.add('dot');
             if (idx === currentIndex) dot.classList.add('active');
@@ -261,54 +250,45 @@
                 const idxClicked = parseInt(dot.getAttribute('data-index'), 10);
                 if (!isNaN(idxClicked) && idxClicked !== currentIndex) {
                     goToSlide(idxClicked);
-                    resetAutoTimer();  // 手动切换后重置计时器
+                    resetAutoTimer();
                 }
             });
             dotsContainer.appendChild(dot);
         });
     }
 
-    // 切换到指定索引的幻灯片
     function goToSlide(index) {
         if (index === currentIndex) return;
-        if (index < 0) index = images.length - 1;
-        if (index >= images.length) index = 0;
-        
-        // 移除当前激活样式
+        if (index < 0) index = imageList.length - 1;
+        if (index >= imageList.length) index = 0;
+
         slides[currentIndex].classList.remove('active');
         const dots = document.querySelectorAll('.dot');
         dots[currentIndex].classList.remove('active');
-        
+
         currentIndex = index;
-        
         slides[currentIndex].classList.add('active');
         dots[currentIndex].classList.add('active');
     }
-    
-    // 下一张
+
     function nextSlide() {
         let next = currentIndex + 1;
-        if (next >= images.length) next = 0;
+        if (next >= imageList.length) next = 0;
         goToSlide(next);
     }
-    
-    // 上一张
+
     function prevSlide() {
         let prev = currentIndex - 1;
-        if (prev < 0) prev = images.length - 1;
+        if (prev < 0) prev = imageList.length - 1;
         goToSlide(prev);
     }
-    
-    // 自动轮播启动
+
     function startAutoPlay() {
         if (autoTimer) clearInterval(autoTimer);
-        autoTimer = setInterval(() => {
-            nextSlide();
-        }, INTERVAL_TIME);
+        autoTimer = setInterval(() => nextSlide(), INTERVAL_TIME);
         isPlaying = true;
     }
-    
-    // 暂停自动轮播
+
     function stopAutoPlay() {
         if (autoTimer) {
             clearInterval(autoTimer);
@@ -316,19 +296,14 @@
         }
         isPlaying = false;
     }
-    
-    // 重置计时器 (保持自动播放状态)
+
     function resetAutoTimer() {
         if (isPlaying) {
-            // 重新开始计时
             if (autoTimer) clearInterval(autoTimer);
-            autoTimer = setInterval(() => {
-                nextSlide();
-            }, INTERVAL_TIME);
+            autoTimer = setInterval(() => nextSlide(), INTERVAL_TIME);
         }
     }
-    
-    // 鼠标悬停时暂停自动轮播 (提升用户体验，但不会干扰手动)
+
     let hoverPaused = false;
     function pauseOnHover() {
         if (isPlaying && !hoverPaused) {
@@ -336,15 +311,14 @@
             hoverPaused = true;
         }
     }
-    
+
     function resumeOnLeave() {
         if (hoverPaused) {
             startAutoPlay();
             hoverPaused = false;
         }
     }
-    
-    // 绑定事件 (按钮 + 全屏容器悬停控制)
+
     function bindEvents() {
         prevBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -356,96 +330,45 @@
             nextSlide();
             resetAutoTimer();
         });
-        
-        // 全屏容器悬停时暂停自动播放，离开恢复
+
         const container = document.querySelector('.fullscreen-carousel');
         if (container) {
             container.addEventListener('mouseenter', pauseOnHover);
             container.addEventListener('mouseleave', resumeOnLeave);
-            // 移动端触摸：触摸时暂停，触摸结束恢复（避免干扰手动滑动）
-            container.addEventListener('touchstart', (e) => {
-                // 如果触摸的是按钮区域，不额外处理按钮事件本身会自己响应，但自动播放暂停是友好的
-                pauseOnHover();
-            });
-            container.addEventListener('touchend', (e) => {
-                // 延迟一点点恢复，避免点击按钮后瞬间恢复又立即自动切换
+            container.addEventListener('touchstart', pauseOnHover);
+            container.addEventListener('touchend', () => {
                 setTimeout(() => {
-                    if (hoverPaused) {
-                        resumeOnLeave();
-                    }
+                    if (hoverPaused) resumeOnLeave();
                 }, 300);
             });
         }
     }
-    
-    // 监听窗口resize 保证全屏无异常 (无需额外操作，CSS已覆盖)
-    window.addEventListener('resize', () => {});
-    
-    // 初始化轮播
+
     function init() {
         buildCarousel();
         bindEvents();
-        startAutoPlay();  // 自动播放开启 (10秒)
+        startAutoPlay();
     }
-    
+
     init();
 
-    // 提供给控制台简易API (方便用户替换图片，而无需懂代码)
-    window.carouselControl = {
-        // 更新整个图片列表: 传入数组 ['https://xxx.jpg', ...] 或 [{url: 'xx'}]
-        updateImages: function(newImageUrls) {
-            if (!newImageUrls || newImageUrls.length === 0) return;
-            // 清空原数组
-            images.length = 0;
-            for (let i = 0; i < newImageUrls.length; i++) {
-                let url = typeof newImageUrls[i] === 'string' ? newImageUrls[i] : newImageUrls[i].url;
-                if (url) images.push({ url: url });
-            }
-            // 重置状态
-            currentIndex = 0;
-            // 重新构建dom
-            slides = [];
-            buildCarousel();
-            // 重置计时器 (保持自动播放)
-            if (isPlaying) {
-                if (autoTimer) clearInterval(autoTimer);
-                startAutoPlay();
-            } else {
-                // 如果当前暂停状态，保持暂停但重建后需要重新绑定？
-                if (autoTimer) clearInterval(autoTimer);
-                autoTimer = null;
-            }
-            console.log('✅ 轮播图片已更新，共 ' + images.length + ' 张');
-        },
-        // 添加一张图片
-        addImage: function(imageUrl) {
-            images.push({ url: imageUrl });
-            // 重建轮播 (保留当前索引最好重置到第一张，避免越界)
-            const oldIndex = currentIndex;
-            slides = [];
-            buildCarousel();
-            if (oldIndex < images.length) {
-                goToSlide(oldIndex);
-            } else {
-                goToSlide(0);
-            }
-            if (isPlaying) resetAutoTimer();
-            console.log('✅ 已添加新图片');
-        },
-        // 暂停/恢复自动播放
-        toggleAutoPlay: function() {
-            if (isPlaying) {
-                stopAutoPlay();
-                console.log('⏸️ 自动播放已暂停');
-            } else {
-                startAutoPlay();
-                console.log('▶️ 自动播放已恢复 (10秒间隔)');
-            }
+    // 可选：控制台动态更新
+    window.updateCarousel = function(newList) {
+        if (!newList || !newList.length) return;
+        imageList.length = 0;
+        newList.forEach(item => imageList.push(item));
+        currentIndex = 0;
+        buildCarousel();
+        if (isPlaying) {
+            if (autoTimer) clearInterval(autoTimer);
+            startAutoPlay();
+        } else {
+            if (autoTimer) clearInterval(autoTimer);
+            autoTimer = null;
         }
+        console.log(`✅ 轮播已更新，共 ${imageList.length} 张图片`);
     };
-    
-    // 控制台输出帮助信息
-    console.log('🎬 全屏轮播已启动 | 切换间隔10秒 | 使用 window.carouselControl.updateImages([...]) 更换图片');
+    console.log('🎬 全屏轮播已启动 | 10秒自动切换 | 修改 imageList 数组即可');
 </script>
 </body>
 </html>
